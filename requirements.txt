@@ -1,0 +1,5 @@
+#pip install -r requirements.txt in bash
+opencv-python
+numpy
+mss
+pyautogui
