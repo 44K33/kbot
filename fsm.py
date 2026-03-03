@@ -63,8 +63,14 @@ class BotFSM:
     #function that clicks on tree
     def _click_tree(self):
         if self.tree_position:
-            random_reaction_delay() #simulate human reaction
-            self.input_handler.click(self.tree_position)
+            random_reaction_delay()
+            #offset position by region origin
+            if self.region:
+                actual_x = self.tree_position[0] + self.region[0]
+                actual_y = self.tree_position[1] + self.region[1]
+                self.input_handler.click((actual_x, actual_y))
+            else:
+                self.input_handler.click(self.tree_position)
             self._log(f"Clicked tree at {self.tree_position}")
             self._set_state(State.WAIT_CHOP)
         else:
