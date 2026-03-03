@@ -51,17 +51,24 @@ class BotFSM:
             else:
                 self.state = State.SEARCH_TREE #if no tree position, go back to searching
 
-        #function that waits for tree to vanish
-    def _wait_chop(self):
-        random_delay(mean=4.0, std_dev=0.8, min_delay=2.0, max_delay=7.0)
-    
-        #check if the tree is still there
-        position, confidence = find_tree()
-    
-        if position:
-        #tree still there, keep waiting
-            self.state = State.WAIT_CHOP
-        else:
-            #tree is gone, find a new one
-            self.tree_position = None
-            self.state = State.SEARCH_TREE
+        #checks if the same tree is still there
+        def _is_same_tree(self, tolerance=10):
+                new_position, _ = find_tree()
+                if new_position is None:
+                    return False #if no tree is found the bot searches again 
+                dx = abs(new_position[0] - self.tree_position[0])#checks pixel distance between tree thats being chopped and best matching tree
+                dy = abs(new_position[1] - self.tree_position[1])# 0 is x coordinate and y is 1
+                return dx <= tolerance and dy <= tolerance
+
+        def _wait_chop(self):
+            #wait for the tree to be chopped down
+            random_delay(mean=4.0, std_dev=0.8, min_delay=2.0, max_delay=7.0)
+
+            #check if the same tree is still there
+            if self._is_same_tree():
+                #tree is still standing, keep waiting
+                self.state = State.WAIT_CHOP
+            else:
+                #tree is gone, go find a new one
+                self.tree_position = None
+                self.state = State.SEARCH_TREE
