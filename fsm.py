@@ -3,6 +3,7 @@ from enum import Enum
 from pyautogui import position
 from vision import find_tree
 from randomizer import random_reaction_delay, idle_time, random_delay
+from input_handler import InputHandler
 
 # Enum so that i dont have to use string literals
 class State(Enum):
