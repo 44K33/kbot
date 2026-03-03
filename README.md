@@ -8,6 +8,7 @@ pip install -r requirements.txt
 Run the game in windowed mode, then start main.py.
 
 ## Structure
+```
 osrs-bot/
 ├── main.py            # Entry point
 ├── vision.py          # Screen capture & tree detection
@@ -15,6 +16,7 @@ osrs-bot/
 ├── randomizer.py      # Human-like delays & click variation
 ├── input_handler.py   # Mouse control
 └── templates/         # Reference images
+```
 
 ## Disclaimer
 For educational purposes only.
