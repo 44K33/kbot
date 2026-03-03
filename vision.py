@@ -32,7 +32,7 @@ def find_template(screenshot, template_path, threshold=0.8): #threshold is the m
     # Convert both images to grayscale for template matching (colors can interfere with matching)
     screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
     template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-    # OpenCV's template matching function
+    # OpenCVs template matching function
     result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
     #This looks for the location of the best match
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
