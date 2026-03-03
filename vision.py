@@ -22,6 +22,32 @@ def screen_capture(region=None):
         img = np.array(screenshot)
         img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
         return img
-    
-def find_template(screenshot, template_path, threshold=0.8):
+
+# Function that finds template image in screenshot and returns the coordinates 
+def find_template(screenshot, template_path, threshold=0.8): #threshold is the minimum similarity score for a match to be considered valid (1 is perfect match)
     template = cv2.imread(template_path)
+
+    if template is None:
+        raise FileNotFoundError(f"Template image was not found: {template_path}")
+    # Convert both images to grayscale for template matching (colors can interfere with matching)
+    screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
+    template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+    # OpenCV's template matching function
+    result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
+    #This looks for the location of the best match
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    #is the best match above threshold?
+    if max_val >= threshold:
+        #returns the center of the matching image (Standard is top left)
+        template_h, template_w = template_gray.shape
+        center_x = max_loc[0] + template_w // 2
+        center_y = max_loc[1] + template_h // 2
+        return (center_x, center_y), max_val
+    
+    return None, max_val
+
+#combines the 2 functions above to find the tree and return its coordinates and confidence score
+def find_tree(template_path="templates/tree.png", threshold=0.8):
+    screenshot = screen_capture()
+    position, confidence = find_template(screenshot, template_path, threshold)
+    return position, confidence
