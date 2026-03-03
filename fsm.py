@@ -64,7 +64,7 @@ class BotFSM:
     def _click_tree(self):
         if self.tree_position:
             random_reaction_delay() #simulate human reaction
-            self.input_handler.click(*self.tree_position)
+            self.input_handler.click(self.tree_position)
             self._log(f"Clicked tree at {self.tree_position}")
             self._set_state(State.WAIT_CHOP)
         else:
