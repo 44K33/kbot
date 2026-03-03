@@ -1,9 +1,6 @@
 from enum import Enum
-
-from pyautogui import position
 from vision import find_tree
 from randomizer import random_reaction_delay, idle_time, random_delay
-from input_handler import InputHandler
 
 # Enum so that i dont have to use string literals
 class State(Enum):
@@ -13,63 +10,82 @@ class State(Enum):
 
 #defines the 3 states
 class BotFSM:
-    #standard state is seach tree
-    def __init__(self, input_handler):
+    #standard state is search tree
+    def __init__(self, input_handler, region=None, state_callback=None, log_callback=None):
         self.state = State.SEARCH_TREE
         self.input_handler = input_handler
+        self.region = region
+        self.state_callback = state_callback
+        self.log_callback = log_callback
         self.tree_position = None
+        self.running = True
+
+    def stop(self):
+        self.running = False
+
+    def _set_state(self, state):
+        self.state = state
+        if self.state_callback:
+            self.state_callback(state.value)
+
+    def _log(self, message):
+        if self.log_callback:
+            self.log_callback(message)
+
     #main loop
     def run(self):
-        while True:
+        while self.running:
             idle_time() #occasionally does nothing to seem more human
 
             if self.state == State.SEARCH_TREE:
                 self._search_tree()
-            
+
             elif self.state == State.CLICK_TREE:
                 self._click_tree()
-            
+
             elif self.state == State.WAIT_CHOP:
                 self._wait_chop()
+
     #function that looks for the tree
     def _search_tree(self):
         #find_tree returns confidence aswell but we dont need it so it doesnt matter :)
-        position, confidence = find_tree()
+        position, confidence = find_tree(region=self.region)
 
         if position:
             self.tree_position = position
-            self.state = State.CLICK_TREE
+            self._log(f"Tree found at {position}")
+            self._set_state(State.CLICK_TREE)
         else:
             #no tree found
-            random_delay(mean=0.5, std_dev=0.1, min_delay=0.3, max_delay=1.0) #wait before trying again
+            self._log("No tree found, retrying...")
+            random_delay(mean=0.5, std_dev=0.1, min_delay=0.3, max_delay=1.0)
 
-        #function that clicks on tree
-        def _click_tree(self):
-            if self.tree_position:
-                random_reaction_delay() #simulate human reaction
-                self.input_handler.click(*self.tree_position)
-                self.state = State.WAIT_CHOP
-            else:
-                self.state = State.SEARCH_TREE #if no tree position, go back to searching
+    #function that clicks on tree
+    def _click_tree(self):
+        if self.tree_position:
+            random_reaction_delay() #simulate human reaction
+            self.input_handler.click(*self.tree_position)
+            self._log(f"Clicked tree at {self.tree_position}")
+            self._set_state(State.WAIT_CHOP)
+        else:
+            self._set_state(State.SEARCH_TREE)
 
-        #checks if the same tree is still there
-        def _is_same_tree(self, tolerance=10):
-                new_position, _ = find_tree()
-                if new_position is None:
-                    return False #if no tree is found the bot searches again 
-                dx = abs(new_position[0] - self.tree_position[0])#checks pixel distance between tree thats being chopped and best matching tree
-                dy = abs(new_position[1] - self.tree_position[1])# 0 is x coordinate and y is 1
-                return dx <= tolerance and dy <= tolerance
+    #checks if the same tree is still there
+    def _is_same_tree(self, tolerance=10):
+        new_position, _ = find_tree(region=self.region)
+        if new_position is None:
+            return False
+        dx = abs(new_position[0] - self.tree_position[0])
+        dy = abs(new_position[1] - self.tree_position[1])
+        return dx <= tolerance and dy <= tolerance
 
-        def _wait_chop(self):
-            #wait for the tree to be chopped down
-            random_delay(mean=4.0, std_dev=0.8, min_delay=2.0, max_delay=7.0)
+    def _wait_chop(self):
+        random_delay(mean=4.0, std_dev=0.8, min_delay=2.0, max_delay=7.0)
 
-            #check if the same tree is still there
-            if self._is_same_tree():
-                #tree is still standing, keep waiting
-                self.state = State.WAIT_CHOP
-            else:
-                #tree is gone, go find a new one
-                self.tree_position = None
-                self.state = State.SEARCH_TREE
+        if self._is_same_tree():
+            self._log("Tree still standing, waiting...")
+            self._set_state(State.WAIT_CHOP)
+        else:
+            self._log("Tree chopped, searching for next...")
+            self.tree_position = None
+            self._set_state(State.SEARCH_TREE)

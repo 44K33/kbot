@@ -47,7 +47,7 @@ def find_template(screenshot, template_path, threshold=0.8): #threshold is the m
     return None, max_val
 
 #combines the 2 functions above to find the tree and return its coordinates and confidence score
-def find_tree(template_path="templates/tree.png", threshold=0.8):
-    screenshot = screen_capture()
+def find_tree(template_path="templates/tree.png", threshold=0.8, region=None):
+    screenshot = screen_capture(region=region)
     position, confidence = find_template(screenshot, template_path, threshold)
     return position, confidence
