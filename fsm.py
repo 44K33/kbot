@@ -1,4 +1,6 @@
 from enum import Enum
+
+from pyautogui import position
 from vision import find_tree
 from randomizer import random_reaction_delay, idle_time, random_delay
 
@@ -50,7 +52,16 @@ class BotFSM:
                 self.state = State.SEARCH_TREE #if no tree position, go back to searching
 
         #function that waits for tree to vanish
-        def _wait_chop(self):
-            random_delay(mean=5.0, std_dev=1.0, min_delay=3.0, max_delay=10.0) #wait time
+    def _wait_chop(self):
+        random_delay(mean=4.0, std_dev=0.8, min_delay=2.0, max_delay=7.0)
+    
+        #check if the tree is still there
+        position, confidence = find_tree()
+    
+        if position:
+        #tree still there, keep waiting
+            self.state = State.WAIT_CHOP
+        else:
+            #tree is gone, find a new one
             self.tree_position = None
             self.state = State.SEARCH_TREE
