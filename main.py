@@ -8,7 +8,7 @@ from fsm import BotFSM
 class BotGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("OSRS Woodcutting Bot")
+        self.root.title("kbot - Kostadin Kostadinov")
         self.root.geometry("400x500")
         self.root.resizable(False, False)
 
