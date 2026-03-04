@@ -21,13 +21,12 @@ class InputHandler:
         pyautogui.click()
 
     def shift_click(self, position):
-        #shiftclick to drop the log
         x, y = position
+        x, y = random_click_offset(x, y)
         pyautogui.moveTo(x, y, duration=self._mouse_duration())
         random_delay()
-        pyautogui.keyDown("shift")
-        pyautogui.click()
-        pyautogui.keyUp("shift")
+        with pyautogui.hold('shift'):
+            pyautogui.click()
 
     def _mouse_duration(self):
         #how long the mouse takes to move to the target
