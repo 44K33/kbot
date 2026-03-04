@@ -9,18 +9,19 @@ class BotGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("kbot - Kostadin Kostadinov")
-        self.root.geometry("400x500")
+        self.root.geometry("400x600")
         self.root.resizable(False, False)
 
         self.bot_thread = None
         self.bot_running = False
         self.region = None
+        self.inventory_region = None
         self.bot = None
 
         self._build_ui()
 
     def _build_ui(self):
-        # Region selection
+        # Game region selection
         region_frame = tk.LabelFrame(self.root, text="Game Region", padx=10, pady=10)
         region_frame.pack(fill="x", padx=15, pady=10)
 
@@ -30,9 +31,19 @@ class BotGUI:
         select_btn = tk.Button(region_frame, text="Select Region", command=self._select_region)
         select_btn.pack(pady=5)
 
+        # Inventory region selection
+        inv_frame = tk.LabelFrame(self.root, text="Inventory Region", padx=10, pady=10)
+        inv_frame.pack(fill="x", padx=15, pady=5)
+
+        self.inv_label = tk.Label(inv_frame, text="No inventory selected", fg="red")
+        self.inv_label.pack()
+
+        inv_btn = tk.Button(inv_frame, text="Select Inventory", command=self._select_inventory)
+        inv_btn.pack(pady=5)
+
         # Bot controls
         control_frame = tk.LabelFrame(self.root, text="Controls", padx=10, pady=10)
-        control_frame.pack(fill="x", padx=15, pady=10)
+        control_frame.pack(fill="x", padx=15, pady=5)
 
         self.start_btn = tk.Button(control_frame, text="Start", bg="green", fg="white",
                                    width=15, command=self._start_bot, state="disabled")
@@ -44,14 +55,14 @@ class BotGUI:
 
         # Current state
         state_frame = tk.LabelFrame(self.root, text="Current State", padx=10, pady=10)
-        state_frame.pack(fill="x", padx=15, pady=10)
+        state_frame.pack(fill="x", padx=15, pady=5)
 
         self.state_label = tk.Label(state_frame, text="IDLE", font=("Arial", 12, "bold"), fg="gray")
         self.state_label.pack()
 
         # Log window
         log_frame = tk.LabelFrame(self.root, text="Log", padx=10, pady=10)
-        log_frame.pack(fill="both", expand=True, padx=15, pady=10)
+        log_frame.pack(fill="both", expand=True, padx=15, pady=5)
 
         self.log_box = tk.Text(log_frame, height=10, state="disabled", bg="#1e1e1e", fg="#00ff00",
                                font=("Courier", 9))
@@ -71,7 +82,13 @@ class BotGUI:
         self.state_label.config(text=state)
 
     def _select_region(self):
-        self._log("Selecting region — draw a rectangle over the game window...")
+        self._draw_overlay("Game region", self._on_region_selected)
+
+    def _select_inventory(self):
+        self._draw_overlay("Inventory region", self._on_inventory_selected)
+
+    def _draw_overlay(self, label, callback):
+        self._log(f"Selecting {label} — draw a rectangle...")
         self.root.withdraw()
         time.sleep(0.5)
 
@@ -99,24 +116,35 @@ class BotGUI:
         def on_release(event):
             x1, y1 = min(start_x, event.x), min(start_y, event.y)
             x2, y2 = max(start_x, event.x), max(start_y, event.y)
-            self.region = (x1, y1, x2 - x1, y2 - y1)
+            region = (x1, y1, x2 - x1, y2 - y1)
             overlay.destroy()
             self.root.deiconify()
-            self.region_label.config(
-                text=f"x={x1} y={y1} w={x2 - x1} h={y2 - y1}", fg="green"
-            )
-            self.start_btn.config(state="normal")
-            self._log(f"Region set: x={x1}, y={y1}, width={x2-x1}, height={y2-y1}")
+            callback(region)
 
         canvas.bind("<ButtonPress-1>", on_press)
         canvas.bind("<B1-Motion>", on_drag)
         canvas.bind("<ButtonRelease-1>", on_release)
 
-    def _start_bot(self):
-        if not self.region:
-            self._log("No region selected!")
-            return
+    def _on_region_selected(self, region):
+        self.region = region
+        x1, y1, w, h = region
+        self.region_label.config(text=f"x={x1} y={y1} w={w} h={h}", fg="green")
+        self._log(f"Game region set: x={x1}, y={y1}, width={w}, height={h}")
+        self._check_start_ready()
 
+    def _on_inventory_selected(self, region):
+        self.inventory_region = region
+        x1, y1, w, h = region
+        self.inv_label.config(text=f"x={x1} y={y1} w={w} h={h}", fg="green")
+        self._log(f"Inventory region set: x={x1}, y={y1}, width={w}, height={h}")
+        self._check_start_ready()
+
+    def _check_start_ready(self):
+        # only enable start when both regions are selected
+        if self.region and self.inventory_region:
+            self.start_btn.config(state="normal")
+
+    def _start_bot(self):
         self.bot_running = True
         self.start_btn.config(state="disabled")
         self.stop_btn.config(state="normal")
@@ -124,6 +152,7 @@ class BotGUI:
 
         input_handler = InputHandler()
         self.bot = BotFSM(input_handler, region=self.region,
+                          inventory_region=self.inventory_region,
                           state_callback=self._update_state,
                           log_callback=self._log)
 
