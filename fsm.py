@@ -53,12 +53,6 @@ class BotFSM:
 
     #function that looks for the tree
     def _search_tree(self):
-        # check inventory first before searching for a tree
-        if self.inventory_region and is_inventory_full(self.inventory_region):
-            self._log("Inventory full, dropping logs...")
-            self._set_state(State.DROP_LOGS)
-            return
-
         #find_tree returns confidence aswell but we dont need it so it doesnt matter :)
         position, confidence = find_tree(region=self.region)
 
@@ -99,13 +93,24 @@ class BotFSM:
     def _wait_chop(self):
         random_delay(mean=4.0, std_dev=0.8, min_delay=2.0, max_delay=7.0)
 
+        # check inventory while waiting if full we need to drop before we can continue
+        if self.inventory_region and is_inventory_full(self.inventory_region):
+            self._log("Inventory full while chopping, dropping logs...")
+            self.tree_position = None
+            self._set_state(State.DROP_LOGS)
+            return
+
         if self._is_same_tree():
             self._log("Tree still standing, waiting...")
             self._set_state(State.WAIT_CHOP)
         else:
             self._log("Tree chopped, searching for next...")
             self.tree_position = None
-            self._set_state(State.SEARCH_TREE)
+            if self.inventory_region and is_inventory_full(self.inventory_region):
+                self._log("Inventory full, dropping logs...")
+                self._set_state(State.DROP_LOGS)
+            else:
+                self._set_state(State.SEARCH_TREE)
 
     def _drop_logs(self):
         if not self.inventory_region:
@@ -117,7 +122,7 @@ class BotFSM:
         slot_h = inv_h / 7
 
         self._log("Dropping all logs...")
-        self.input_handler.hold_shift()  # hold shift now
+        self.input_handler.hold_shift()
 
         for slot in range(28):
             col = slot % 4
@@ -129,7 +134,7 @@ class BotFSM:
             self.input_handler.click((slot_x, slot_y))
             random_delay(mean=0.15, std_dev=0.03, min_delay=0.1, max_delay=0.3)
 
-        self.input_handler.release_shift()  # release after all slots done
+        self.input_handler.release_shift()
         self._log("Logs dropped, resuming...")
         random_delay(mean=1.0, std_dev=0.2, min_delay=0.8, max_delay=1.5)
         self._set_state(State.SEARCH_TREE)
