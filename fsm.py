@@ -112,29 +112,32 @@ class BotFSM:
             else:
                 self._set_state(State.SEARCH_TREE)
 
-    def _drop_logs(self):
-        if not self.inventory_region:
-            self._set_state(State.SEARCH_TREE)
-            return
-
-        inv_x, inv_y, inv_w, inv_h = self.inventory_region
-        slot_w = inv_w / 4
-        slot_h = inv_h / 7
-
-        self._log("Dropping all logs...")
-        self.input_handler.hold_shift()
-
-        for slot in range(28):
-            col = slot % 4
-            row = slot // 4
-            slot_x = int(inv_x + col * slot_w + slot_w / 2)
-            slot_y = int(inv_y + row * slot_h + slot_h / 2)
-
-            slot_x, slot_y = random_click_offset(slot_x, slot_y, radius=3)
-            self.input_handler.click((slot_x, slot_y))
-            random_delay(mean=0.15, std_dev=0.03, min_delay=0.1, max_delay=0.3)
-
-        self.input_handler.release_shift()
-        self._log("Logs dropped, resuming...")
-        random_delay(mean=1.0, std_dev=0.2, min_delay=0.8, max_delay=1.5)
+def _drop_logs(self):
+    if not self.inventory_region:
         self._set_state(State.SEARCH_TREE)
+        return
+
+    inv_x, inv_y, inv_w, inv_h = self.inventory_region
+    slot_w = inv_w / 4
+    slot_h = inv_h / 7
+
+    self._log("Dropping all logs...")
+    self.input_handler.hold_shift()
+
+    for slot in range(28):
+        col = slot % 4
+        row = slot // 4
+        slot_x = int(inv_x + col * slot_w + slot_w / 2)
+        slot_y = int(inv_y + row * slot_h + slot_h / 2)
+
+        slot_x, slot_y = random_click_offset(slot_x, slot_y, radius=3)
+        self.input_handler.click((slot_x, slot_y))
+        random_delay(mean=0.15, std_dev=0.03, min_delay=0.1, max_delay=0.3)
+
+    print("SHIFT RELEASED")  # add this
+    self.input_handler.release_shift()
+    print("DELAY STARTING")  # add this
+    random_delay(mean=1.0, std_dev=0.2, min_delay=0.8, max_delay=1.5)
+    print("SETTING STATE TO SEARCH TREE")  # add this
+    self._set_state(State.SEARCH_TREE)
+    print("STATE SET")  # add this
