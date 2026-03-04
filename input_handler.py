@@ -26,13 +26,9 @@ class InputHandler:
         x, y = random_click_offset(x, y)
         pyautogui.moveTo(x, y, duration=self._mouse_duration())
         random_delay()
+        pydirectinput.keyDown('shift')
         pyautogui.click()
-
-    def hold_shift(self):
-        pydirectinput.keyDown("shift")
-
-    def release_shift(self):
-        pydirectinput.keyUp("shift")
+        pydirectinput.keyUp('shift')
 
     def _mouse_duration(self):
         #how long the mouse takes to move to the target
