@@ -117,18 +117,19 @@ class BotFSM:
         slot_h = inv_h / 7
 
         self._log("Dropping all logs...")
+        self.input_handler.hold_shift()  # hold shift now
 
-        #loop through all 28 slots and shift+click each one
         for slot in range(28):
             col = slot % 4
             row = slot // 4
             slot_x = int(inv_x + col * slot_w + slot_w / 2)
             slot_y = int(inv_y + row * slot_h + slot_h / 2)
 
-            #apply random offset and shift+click
             slot_x, slot_y = random_click_offset(slot_x, slot_y, radius=3)
-            self.input_handler.shift_click((slot_x, slot_y))
+            self.input_handler.click((slot_x, slot_y))
             random_delay(mean=0.15, std_dev=0.03, min_delay=0.1, max_delay=0.3)
 
+        self.input_handler.release_shift()  # release after all slots done
         self._log("Logs dropped, resuming...")
+        random_delay(mean=1.0, std_dev=0.2, min_delay=0.8, max_delay=1.5)
         self._set_state(State.SEARCH_TREE)
