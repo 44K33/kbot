@@ -1,20 +1,22 @@
 from enum import Enum
-from vision import find_tree
-from randomizer import random_reaction_delay, idle_time, random_delay
+from vision import find_tree, is_inventory_full
+from randomizer import random_reaction_delay, idle_time, random_delay, random_click_offset
 
 # Enum so that i dont have to use string literals
 class State(Enum):
     SEARCH_TREE = "search_tree"
     CLICK_TREE = "click_tree"
     WAIT_CHOP = "wait_chop"
+    DROP_LOGS = "drop_logs"
 
-#defines the 3 states
+#defines the states
 class BotFSM:
     #standard state is search tree
-    def __init__(self, input_handler, region=None, state_callback=None, log_callback=None):
+    def __init__(self, input_handler, region=None, inventory_region=None, state_callback=None, log_callback=None):
         self.state = State.SEARCH_TREE
         self.input_handler = input_handler
         self.region = region
+        self.inventory_region = inventory_region
         self.state_callback = state_callback
         self.log_callback = log_callback
         self.tree_position = None
@@ -46,8 +48,17 @@ class BotFSM:
             elif self.state == State.WAIT_CHOP:
                 self._wait_chop()
 
+            elif self.state == State.DROP_LOGS:
+                self._drop_logs()
+
     #function that looks for the tree
     def _search_tree(self):
+        # check inventory first before searching for a tree
+        if self.inventory_region and is_inventory_full(self.inventory_region):
+            self._log("Inventory full, dropping logs...")
+            self._set_state(State.DROP_LOGS)
+            return
+
         #find_tree returns confidence aswell but we dont need it so it doesnt matter :)
         position, confidence = find_tree(region=self.region)
 
@@ -95,3 +106,29 @@ class BotFSM:
             self._log("Tree chopped, searching for next...")
             self.tree_position = None
             self._set_state(State.SEARCH_TREE)
+
+    def _drop_logs(self):
+        if not self.inventory_region:
+            self._set_state(State.SEARCH_TREE)
+            return
+
+        inv_x, inv_y, inv_w, inv_h = self.inventory_region
+        slot_w = inv_w / 4
+        slot_h = inv_h / 7
+
+        self._log("Dropping all logs...")
+
+        #loop through all 28 slots and shift+click each one
+        for slot in range(28):
+            col = slot % 4
+            row = slot // 4
+            slot_x = int(inv_x + col * slot_w + slot_w / 2)
+            slot_y = int(inv_y + row * slot_h + slot_h / 2)
+
+            #apply random offset and shift+click
+            slot_x, slot_y = random_click_offset(slot_x, slot_y, radius=3)
+            self.input_handler.shift_click((slot_x, slot_y))
+            random_delay(mean=0.15, std_dev=0.03, min_delay=0.1, max_delay=0.3)
+
+        self._log("Logs dropped, resuming...")
+        self._set_state(State.SEARCH_TREE)
