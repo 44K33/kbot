@@ -2,6 +2,10 @@ import cv2
 import numpy as np
 import mss
 import mss.tools
+import easyocr
+
+#initialize easyocr reader once at startup (takes a few seconds on first run)
+reader = easyocr.Reader(["en"], gpu=False)
 
 #function that captures screenshot
 def screen_capture(region=None):
@@ -46,38 +50,49 @@ def find_template(screenshot, template_path, threshold=0.8): #threshold is the m
     
     return None, max_val
 
-#combines the 2 functions above to find the tree and return its coordinates and confidence score
-def find_tree(template_path="templates/tree.png", threshold=0.8, region=None):
+#finds a tree by detecting the cyan color marker in the game region
+def find_tree(region=None):
     screenshot = screen_capture(region=region)
-    position, confidence = find_template(screenshot, template_path, threshold)
-    return position, confidence
 
-#calculates the position of slot 28
-def get_slot28_position(inventory_region):
-    inv_x, inv_y, inv_w, inv_h = inventory_region
-    slot_w = inv_w / 4  # 4 columns
-    slot_h = inv_h / 7  # 7 rows
+    #convert to HSV for color detection
+    hsv = cv2.cvtColor(screenshot, cv2.COLOR_BGR2HSV)
 
-    #slot 28
-    slot_x = int(inv_x + 3 * slot_w + slot_w / 2)
-    slot_y = int(inv_y + 6 * slot_h + slot_h / 2)
-    return slot_x, slot_y
+    #cyan HSV range
+    lower_cyan = np.array([85, 100, 100])
+    upper_cyan = np.array([95, 255, 255])
 
-#checks if slot 28 is occupied by analyzing the color of the slot
-def is_inventory_full(inventory_region, empty_slot_color=(55, 64, 73), tolerance=20):
-    slot_x, slot_y = get_slot28_position(inventory_region)
+    #create a mask of all cyan pixels
+    mask = cv2.inRange(hsv, lower_cyan, upper_cyan)
 
-    #capture a small area around the center of slot 28
-    slot_size = 10
-    slot_region = (slot_x - slot_size, slot_y - slot_size, slot_size * 2, slot_size * 2)
-    screenshot = screen_capture(region=slot_region)
+    #find all contours (connected cyan areas) in the mask
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    #calculate average color of the slot
-    avg_color = screenshot.mean(axis=(0, 1))  #average BGR
-    b, g, r = avg_color
+    if not contours:
+        return None, 0.0
 
-    #compare to the known empty slot color
-    eb, eg, er = empty_slot_color
-    if abs(b - eb) < tolerance and abs(g - eg) < tolerance and abs(r - er) < tolerance:
-        return False  #slot is empty, inventory not full
-    return True  #slot is occupied, inventory full
+    #pick the largest cyan area (most likely the tree marker)
+    largest = max(contours, key=cv2.contourArea)
+
+    #only return if the area is large enough to be a real marker
+    if cv2.contourArea(largest) < 50:
+        return None, 0.0
+
+    #calculate center of the largest contour
+    M = cv2.moments(largest)
+    if M["m00"] == 0:
+        return None, 0.0
+
+    cx = int(M["m10"] / M["m00"])
+    cy = int(M["m01"] / M["m00"])
+
+    return (cx, cy), 1.0
+
+#reads the chat box and checks if a new log was received
+def check_chat_for_logs(chat_region):
+    screenshot = screen_capture(region=chat_region)
+    results = reader.readtext(screenshot)
+    for detection in results:
+        text = detection[1].lower()
+        if "logs" in text or "log" in text:
+            return True
+    return False

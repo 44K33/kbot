@@ -9,13 +9,14 @@ class BotGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("kbot - Kostadin Kostadinov")
-        self.root.geometry("400x600")
+        self.root.geometry("400x700")
         self.root.resizable(False, False)
 
         self.bot_thread = None
         self.bot_running = False
         self.region = None
         self.inventory_region = None
+        self.chat_region = None
         self.bot = None
 
         self._build_ui()
@@ -40,6 +41,16 @@ class BotGUI:
 
         inv_btn = tk.Button(inv_frame, text="Select Inventory", command=self._select_inventory)
         inv_btn.pack(pady=5)
+
+        # Chat region selection
+        chat_frame = tk.LabelFrame(self.root, text="Chat Region", padx=10, pady=10)
+        chat_frame.pack(fill="x", padx=15, pady=5)
+
+        self.chat_label = tk.Label(chat_frame, text="No chat selected", fg="red")
+        self.chat_label.pack()
+
+        chat_btn = tk.Button(chat_frame, text="Select Chat", command=self._select_chat)
+        chat_btn.pack(pady=5)
 
         # Bot controls
         control_frame = tk.LabelFrame(self.root, text="Controls", padx=10, pady=10)
@@ -74,7 +85,7 @@ class BotGUI:
     def _log(self, message):
         timestamp = time.strftime("%H:%M:%S")
         self.log_box.configure(state="normal")
-        self.log_box.insert("end", f"[{timestamp}] {message}\n")
+        self.log_box.insert("end", f"[{timestamp}] {message}")
         self.log_box.see("end")
         self.log_box.configure(state="disabled")
 
@@ -86,6 +97,9 @@ class BotGUI:
 
     def _select_inventory(self):
         self._draw_overlay("Inventory region", self._on_inventory_selected)
+
+    def _select_chat(self):
+        self._draw_overlay("Chat region", self._on_chat_selected)
 
     def _draw_overlay(self, label, callback):
         self._log(f"Selecting {label} — draw a rectangle...")
@@ -139,9 +153,16 @@ class BotGUI:
         self._log(f"Inventory region set: x={x1}, y={y1}, width={w}, height={h}")
         self._check_start_ready()
 
+    def _on_chat_selected(self, region):
+        self.chat_region = region
+        x1, y1, w, h = region
+        self.chat_label.config(text=f"x={x1} y={y1} w={w} h={h}", fg="green")
+        self._log(f"Chat region set: x={x1}, y={y1}, width={w}, height={h}")
+        self._check_start_ready()
+
     def _check_start_ready(self):
-        # only enable start when both regions are selected
-        if self.region and self.inventory_region:
+        # only enable start when all regions are selected
+        if self.region and self.inventory_region and self.chat_region:
             self.start_btn.config(state="normal")
 
     def _start_bot(self):
@@ -153,6 +174,7 @@ class BotGUI:
         input_handler = InputHandler()
         self.bot = BotFSM(input_handler, region=self.region,
                           inventory_region=self.inventory_region,
+                          chat_region=self.chat_region,
                           state_callback=self._update_state,
                           log_callback=self._log)
 

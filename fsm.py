@@ -1,5 +1,5 @@
 from enum import Enum
-from vision import find_tree, is_inventory_full
+from vision import find_tree, check_chat_for_logs
 from randomizer import random_reaction_delay, idle_time, random_delay, random_click_offset
 
 # Enum so that i dont have to use string literals
@@ -12,14 +12,16 @@ class State(Enum):
 #defines the states
 class BotFSM:
     #standard state is search tree
-    def __init__(self, input_handler, region=None, inventory_region=None, state_callback=None, log_callback=None):
+    def __init__(self, input_handler, region=None, inventory_region=None, chat_region=None, state_callback=None, log_callback=None):
         self.state = State.SEARCH_TREE
         self.input_handler = input_handler
         self.region = region
         self.inventory_region = inventory_region
+        self.chat_region = chat_region
         self.state_callback = state_callback
         self.log_callback = log_callback
         self.tree_position = None
+        self.log_count = 0
         self.running = True
 
     def stop(self):
@@ -53,7 +55,6 @@ class BotFSM:
 
     #function that looks for the tree
     def _search_tree(self):
-        #find_tree returns confidence aswell but we dont need it so it doesnt matter :)
         position, confidence = find_tree(region=self.region)
 
         if position:
@@ -61,7 +62,6 @@ class BotFSM:
             self._log(f"Tree found at {position}")
             self._set_state(State.CLICK_TREE)
         else:
-            #no tree found
             self._log("No tree found, retrying...")
             random_delay(mean=0.5, std_dev=0.1, min_delay=0.3, max_delay=1.0)
 
@@ -69,7 +69,6 @@ class BotFSM:
     def _click_tree(self):
         if self.tree_position:
             random_reaction_delay()
-            #offset position by region origin
             if self.region:
                 actual_x = self.tree_position[0] + self.region[0]
                 actual_y = self.tree_position[1] + self.region[1]
@@ -93,9 +92,14 @@ class BotFSM:
     def _wait_chop(self):
         random_delay(mean=4.0, std_dev=0.8, min_delay=2.0, max_delay=7.0)
 
-        # check inventory while waiting if full we need to drop before we can continue
-        if self.inventory_region and is_inventory_full(self.inventory_region):
-            self._log("Inventory full while chopping, dropping logs...")
+        # check chat for new logs
+        if self.chat_region and check_chat_for_logs(self.chat_region):
+            self.log_count += 1
+            self._log(f"Got a log! Total: {self.log_count}/28")
+
+        # inventory full, drop logs
+        if self.log_count >= 28:
+            self._log("Inventory full, dropping logs...")
             self.tree_position = None
             self._set_state(State.DROP_LOGS)
             return
@@ -106,38 +110,32 @@ class BotFSM:
         else:
             self._log("Tree chopped, searching for next...")
             self.tree_position = None
-            if self.inventory_region and is_inventory_full(self.inventory_region):
-                self._log("Inventory full, dropping logs...")
-                self._set_state(State.DROP_LOGS)
-            else:
-                self._set_state(State.SEARCH_TREE)
+            self._set_state(State.SEARCH_TREE)
 
-def _drop_logs(self):
-    if not self.inventory_region:
+    def _drop_logs(self):
+        if not self.inventory_region:
+            self._set_state(State.SEARCH_TREE)
+            return
+
+        inv_x, inv_y, inv_w, inv_h = self.inventory_region
+        slot_w = inv_w / 4
+        slot_h = inv_h / 7
+
+        self._log("Dropping all logs...")
+        self.input_handler.hold_shift()
+
+        for slot in range(28):
+            col = slot % 4
+            row = slot // 4
+            slot_x = int(inv_x + col * slot_w + slot_w / 2)
+            slot_y = int(inv_y + row * slot_h + slot_h / 2)
+
+            slot_x, slot_y = random_click_offset(slot_x, slot_y, radius=3)
+            self.input_handler.click((slot_x, slot_y))
+            random_delay(mean=0.15, std_dev=0.03, min_delay=0.1, max_delay=0.3)
+
+        self.input_handler.release_shift()
+        self.log_count = 0  # reset counter after dropping
+        self._log("Logs dropped, resuming...")
+        random_delay(mean=1.0, std_dev=0.2, min_delay=0.8, max_delay=1.5)
         self._set_state(State.SEARCH_TREE)
-        return
-
-    inv_x, inv_y, inv_w, inv_h = self.inventory_region
-    slot_w = inv_w / 4
-    slot_h = inv_h / 7
-
-    self._log("Dropping all logs...")
-    self.input_handler.hold_shift()
-
-    for slot in range(28):
-        col = slot % 4
-        row = slot // 4
-        slot_x = int(inv_x + col * slot_w + slot_w / 2)
-        slot_y = int(inv_y + row * slot_h + slot_h / 2)
-
-        slot_x, slot_y = random_click_offset(slot_x, slot_y, radius=3)
-        self.input_handler.click((slot_x, slot_y))
-        random_delay(mean=0.15, std_dev=0.03, min_delay=0.1, max_delay=0.3)
-
-    print("SHIFT RELEASED")  # add this
-    self.input_handler.release_shift()
-    print("DELAY STARTING")  # add this
-    random_delay(mean=1.0, std_dev=0.2, min_delay=0.8, max_delay=1.5)
-    print("SETTING STATE TO SEARCH TREE")  # add this
-    self._set_state(State.SEARCH_TREE)
-    print("STATE SET")  # add this
