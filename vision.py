@@ -2,10 +2,6 @@ import cv2
 import numpy as np
 import mss
 import mss.tools
-import easyocr
-
-#initialize easyocr reader once at startup (takes a few seconds on first run)
-reader = easyocr.Reader(["en"], gpu=False)
 
 #function that captures screenshot
 def screen_capture(region=None):
@@ -87,12 +83,18 @@ def find_tree(region=None):
 
     return (cx, cy), 1.0
 
-#reads the chat box and checks if a new log was received
-def check_chat_for_logs(chat_region):
-    screenshot = screen_capture(region=chat_region)
-    results = reader.readtext(screenshot)
-    for detection in results:
-        text = detection[1].lower()
-        if "logs" in text or "log" in text:
-            return True
-    return False
+#checks if an xp drop is visible in the xp drop region
+def check_xp_drop(xp_region):
+    screenshot = screen_capture(region=xp_region)
+
+    #convert to grayscale
+    gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
+
+    #threshold to isolate bright pixels (xp drop text is bright yellow/white)
+    _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+
+    #count bright pixels
+    bright_pixels = cv2.countNonZero(thresh)
+
+    #if enough bright pixels are present, an xp drop is visible
+    return bright_pixels > 50

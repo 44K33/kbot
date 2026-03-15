@@ -1,6 +1,7 @@
 from enum import Enum
-from vision import find_tree, check_chat_for_logs
+from vision import find_tree, check_xp_drop
 from randomizer import random_reaction_delay, idle_time, random_delay, random_click_offset
+import time
 
 # Enum so that i dont have to use string literals
 class State(Enum):
@@ -12,12 +13,12 @@ class State(Enum):
 #defines the states
 class BotFSM:
     #standard state is search tree
-    def __init__(self, input_handler, region=None, inventory_region=None, chat_region=None, state_callback=None, log_callback=None):
+    def __init__(self, input_handler, region=None, inventory_region=None, xp_region=None, state_callback=None, log_callback=None):
         self.state = State.SEARCH_TREE
         self.input_handler = input_handler
         self.region = region
         self.inventory_region = inventory_region
-        self.chat_region = chat_region
+        self.xp_region = xp_region
         self.state_callback = state_callback
         self.log_callback = log_callback
         self.tree_position = None
@@ -90,10 +91,18 @@ class BotFSM:
         return dx <= tolerance and dy <= tolerance
 
     def _wait_chop(self):
-        random_delay(mean=4.0, std_dev=0.8, min_delay=2.0, max_delay=7.0)
+        # poll xp drop every 0.5 seconds for up to 8 seconds
+        # xp drop only appears briefly so we need to check frequently
+        xp_detected = False
+        for _ in range(16):
+            if not self.running:
+                return
+            if self.xp_region and check_xp_drop(self.xp_region):
+                xp_detected = True
+                break
+            time.sleep(0.5)
 
-        # check chat for new logs
-        if self.chat_region and check_chat_for_logs(self.chat_region):
+        if xp_detected:
             self.log_count += 1
             self._log(f"Got a log! Total: {self.log_count}/28")
 
@@ -135,7 +144,7 @@ class BotFSM:
             random_delay(mean=0.15, std_dev=0.03, min_delay=0.1, max_delay=0.3)
 
         self.input_handler.release_shift()
-        self.log_count = 0  # reset counter after dropping
+        self.log_count = 0
         self._log("Logs dropped, resuming...")
         random_delay(mean=1.0, std_dev=0.2, min_delay=0.8, max_delay=1.5)
         self._set_state(State.SEARCH_TREE)
