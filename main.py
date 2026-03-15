@@ -85,8 +85,7 @@ class BotGUI:
     def _log(self, message):
         timestamp = time.strftime("%H:%M:%S")
         self.log_box.configure(state="normal")
-        self.log_box.insert("end", f"[{timestamp}] {message}
-")
+        self.log_box.insert("end", f"[{timestamp}] {message}\n")
         self.log_box.see("end")
         self.log_box.configure(state="disabled")
 
