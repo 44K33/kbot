@@ -91,20 +91,20 @@ class BotFSM:
         return dx <= tolerance and dy <= tolerance
 
     def _wait_chop(self):
-        # poll xp drop every 0.5 seconds for up to 8 seconds
-        # xp drop only appears briefly so we need to check frequently
         xp_detected = False
         for _ in range(16):
             if not self.running:
                 return
             if self.xp_region and check_xp_drop(self.xp_region):
-                xp_detected = True
-                break
-            time.sleep(0.5)
-
-        if xp_detected:
-            self.log_count += 1
-            self._log(f"Got a log! Total: {self.log_count}/28")
+                if not xp_detected:  # only count it once
+                    xp_detected = True
+                    self.log_count += 1
+                    self._log(f"Got a log! Total: {self.log_count}/28")
+                time.sleep(1.5)  # wait for xp drop to disappear before checking again
+            else:
+                if xp_detected:
+                    break  # xp drop gone, move on
+                time.sleep(0.5)
 
         # inventory full, drop logs
         if self.log_count >= 28:
