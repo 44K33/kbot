@@ -3,7 +3,7 @@ import random
 import pydirectinput
 from randomizer import random_click_offset, random_delay
 
-#pyautogui has a built-in delay -> we need to disable that one
+#pyautogui has a built-in delay -> we need to disable that one since im using my own random delay function
 pyautogui.PAUSE = 0
 
 class InputHandler:
@@ -21,12 +21,13 @@ class InputHandler:
         random_delay()
         pyautogui.click()
 
+    #shift click function 
     def shift_click(self, position):
         x, y = position
         x, y = random_click_offset(x, y)
         pyautogui.moveTo(x, y, duration=self._mouse_duration())
         random_delay()
-        pydirectinput.keyDown('shift')
+        pydirectinput.keyDown('shift') #shift with pydirectinput because pyautogui was not reliable
         pyautogui.click()
         pydirectinput.keyUp('shift')
 

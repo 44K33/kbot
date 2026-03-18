@@ -51,15 +51,15 @@ def find_tree(region=None):
 
     #calculate center of the largest contour
     M = cv2.moments(largest)
-    if M["m00"] == 0:
+    if M["m00"] == 0: #devision by zero check :)
         return None, 0.0
 
-    cx = int(M["m10"] / M["m00"])
-    cy = int(M["m01"] / M["m00"])
+    cx = int(M["m10"] / M["m00"])#calc center x
+    cy = int(M["m01"] / M["m00"])#calc center y
 
-    return (cx, cy), 1.0
+    return (cx, cy), 1.0#1.0 is confidencescore, if cyan is found 1 if not 0
 
-#checks if an xp drop is visible in the xp drop region
+#checks if an xp drop is visible 
 def check_xp_drop(xp_region):
     screenshot = screen_capture(region=xp_region)
 
@@ -72,5 +72,5 @@ def check_xp_drop(xp_region):
     #count bright pixels
     bright_pixels = cv2.countNonZero(thresh)
 
-    #if enough bright pixels are present, an xp drop is visible
+    #if enough bright pixels are present an xp drop is visible
     return bright_pixels > 50

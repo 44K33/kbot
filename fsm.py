@@ -3,7 +3,7 @@ from vision import find_tree, check_xp_drop
 from randomizer import random_reaction_delay, idle_time, random_delay, random_click_offset
 import time
 
-# Enum so that i dont have to use string literals
+#enum so that i dont have to use string literals
 class State(Enum):
     SEARCH_TREE = "search_tree"
     CLICK_TREE = "click_tree"
@@ -14,34 +14,34 @@ class State(Enum):
 class BotFSM:
     #standard state is search tree
     def __init__(self, input_handler, region=None, inventory_region=None, xp_region=None, state_callback=None, log_callback=None):
-        self.state = State.SEARCH_TREE
-        self.input_handler = input_handler
-        self.region = region
-        self.inventory_region = inventory_region
-        self.xp_region = xp_region
-        self.state_callback = state_callback
-        self.log_callback = log_callback
-        self.tree_position = None
-        self.log_count = 0
+        self.state = State.SEARCH_TREE #standard is search tree
+        self.input_handler = input_handler #object that handles mouse input
+        self.region = region #game region
+        self.inventory_region = inventory_region #inventory region
+        self.xp_region = xp_region #xp drop region
+        self.state_callback = state_callback #callback function to update the GUI with the current state
+        self.log_callback = log_callback #callback function to update the GUI with log messages
+        self.tree_position = None #stores the position of the currently targeted tree
+        self.log_count = 0 #counts the logs to 28
         self.running = True
 
-    def stop(self):
+    def stop(self): #function that stops the bot (stop button)
         self.running = False
 
-    def _set_state(self, state):
+    def _set_state(self, state): #updates current state and calls the state callback to update the GUI
         self.state = state
         if self.state_callback:
             self.state_callback(state.value)
 
-    def _log(self, message):
+    def _log(self, message): #logs messages to the GUI
         if self.log_callback:
             self.log_callback(message)
 
     #main loop
     def run(self):
         while self.running:
-            idle_time() #occasionally does nothing to seem more human
-
+            idle_time()
+            #all state functions return the next state to transition to
             if self.state == State.SEARCH_TREE:
                 self._search_tree()
 
@@ -112,7 +112,7 @@ class BotFSM:
             self.tree_position = None
             self._set_state(State.DROP_LOGS)
             return
-
+        #checks if tree is still there
         if self._is_same_tree():
             self._log("Tree still standing, waiting...")
             self._set_state(State.WAIT_CHOP)
@@ -132,7 +132,7 @@ class BotFSM:
 
         self._log("Dropping all logs...")
         self.input_handler.hold_shift()
-
+        #this drops the logs
         for slot in range(28):
             col = slot % 4
             row = slot // 4

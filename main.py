@@ -4,7 +4,7 @@ import time
 from input_handler import InputHandler
 from fsm import BotFSM
 
-
+#whole gui coded by AI
 class BotGUI:
     def __init__(self, root):
         self.root = root

@@ -7,7 +7,7 @@ def random_delay(mean=0.52, std_dev=0.1, min_delay=0.2, max_delay=2):
     delay = max(min_delay, min(max_delay, delay)) # clamp the delay to the specified range
     time.sleep(delay)
 
-# gen random click position offset (Still need to test the proper radius)
+# gen random click position offset
 def random_click_offset(x, y, radius=5):
     offset_x = int(random.gauss(0, radius))
     offset_y = int(random.gauss(0, radius))
